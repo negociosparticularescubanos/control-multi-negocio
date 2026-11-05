@@ -136,10 +136,20 @@ input[type="checkbox"]{-webkit-appearance:auto;appearance:auto;width:22px;height
 @media (min-width:600px){.modal{align-items:center;padding:1rem;}.modal-content{border-bottom:1px solid var(--border-color);border-radius:24px;}}
 
 /* ---------- Login / carga ---------- */
-.login-overlay{display:flex;position:fixed;inset:0;z-index:3000;justify-content:center;align-items:center;padding:1rem;background:radial-gradient(700px 400px at 50% 0%,rgba(124,140,255,.22),transparent 65%),var(--bg-dark);overflow-y:auto;}
-.login-card{width:100%;max-width:400px;padding:1.75rem 1.5rem;text-align:center;background:var(--surface-dark);border:1px solid var(--border-color);border-radius:24px;box-shadow:0 30px 60px -24px rgba(0,0,0,.7);}
-.brand-mark{display:grid;place-items:center;width:68px;height:68px;margin:0 auto 16px;border-radius:22px;color:var(--accent-blue);background:linear-gradient(145deg,rgba(124,140,255,.22),rgba(62,230,176,.14));border:1px solid var(--border-color);}
-.brand-mark svg{width:32px;height:32px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.login-overlay{display:flex;position:fixed;inset:0;z-index:3000;justify-content:center;align-items:center;padding:1rem;overflow-y:auto;background:radial-gradient(720px 480px at 12% 6%,rgba(124,140,255,.40),transparent 60%),radial-gradient(760px 520px at 88% 16%,rgba(62,230,176,.26),transparent 62%),radial-gradient(900px 620px at 50% 110%,rgba(88,80,236,.32),transparent 60%),linear-gradient(150deg,#131a3d 0%,#05081a 55%,#0d1330 100%);}
+.login-card{width:100%;max-width:400px;padding:2rem 1.6rem;text-align:center;background:rgba(255,255,255,.08);backdrop-filter:blur(20px) saturate(1.35);-webkit-backdrop-filter:blur(20px) saturate(1.35);border:1px solid rgba(255,255,255,.26);border-radius:26px;box-shadow:0 30px 60px -24px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.22);color:#eef1ff;}
+.brand-mark{display:grid;place-items:center;width:94px;height:94px;margin:0 auto 16px;border-radius:50%;color:#cdd6ff;background:radial-gradient(circle at 32% 28%,rgba(255,255,255,.32),rgba(255,255,255,.07) 62%);border:1.5px solid rgba(255,255,255,.42);animation:mnfloat 3.6s ease-in-out infinite,mnglow 3.6s ease-in-out infinite;}
+.brand-mark svg{width:44px;height:44px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 3px 8px rgba(0,0,0,.35));}
+@keyframes mnfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes mnglow{0%,100%{box-shadow:0 10px 26px rgba(0,0,0,.35)}50%{box-shadow:0 0 26px 4px rgba(124,140,255,.45),0 10px 26px rgba(0,0,0,.35)}}
+.login-card p{color:rgba(238,241,255,.72)!important;}
+#login-screen .form-group label{color:rgba(238,241,255,.88);text-align:left;}
+#login-screen .form-group input{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.28);color:#fff;border-radius:12px;padding-left:40px;}
+#login-screen .form-group input::placeholder{color:rgba(238,241,255,.5);}
+#login-screen .form-group input:focus{outline:none;border-color:#7c8cff;box-shadow:0 0 0 3px rgba(124,140,255,.28);}
+#login-screen .gfield{position:relative;}
+#login-screen .gfield>svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:17px;height:17px;color:rgba(238,241,255,.65);pointer-events:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;}
+#login-screen form .btn{background:linear-gradient(135deg,#7c8cff,#3ee6b0);text-transform:uppercase;letter-spacing:.1em;box-shadow:0 12px 26px -10px rgba(124,140,255,.55);}
 .login-card h2{margin-bottom:.35rem;font-size:1.4rem;}
 .login-card p{margin-bottom:1.4rem;color:var(--text-sub);}
 .loading-overlay{display:none;position:fixed;inset:0;z-index:4000;justify-content:center;align-items:center;background:rgba(5,7,18,.75);backdrop-filter:blur(4px);color:var(--text-main);font-size:1rem;font-weight:700;}
@@ -187,8 +197,8 @@ nav.bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:1000;display:flex;
         <p>Inicia sesión para continuar</p>
         <span id="connBadgeLogin" class="conn-badge conn-badge-login is-fail" title="Estado de la conexión con Google Sheets"><span id="connDotLogin" class="conn-dot"></span><span id="connTextLogin">Sin conexión</span></span>
         <form onsubmit="App.procesarLogin(event)" autocomplete="on">
-            <div class="form-group"><label>Usuario</label><input type="text" id="login-user" required placeholder="Tu usuario o correo" autocomplete="username"></div>
-            <div class="form-group"><label>Contraseña</label><input type="password" id="login-pass" required placeholder="••••••••" autocomplete="current-password"></div>
+            <div class="form-group"><label>Usuario</label><div class="gfield"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><input type="text" id="login-user" required placeholder="Tu usuario o correo" autocomplete="username"></div></div>
+            <div class="form-group"><label>Contraseña</label><div class="gfield"><svg viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><input type="password" id="login-pass" required placeholder="••••••••" autocomplete="current-password"></div></div>
             <div id="login-error" style="color:var(--danger);margin-bottom:10px;display:none;">❌ Credenciales incorrectas.</div>
             <button type="submit" class="btn">Entrar</button>
         </form>
