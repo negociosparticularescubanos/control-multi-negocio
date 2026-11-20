@@ -161,7 +161,7 @@ nav.bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:1000;display:flex;
 .nav-btn.active{background:var(--nav-active);color:var(--accent-blue);}
 
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
-/* Indicador de conexión con Google Sheets */
+/* Indicador de conexión con la base de datos (Supabase) */
 .conn-badge{display:inline-flex;align-items:center;gap:.5rem;font-size:.85rem;font-weight:700;padding:.5rem 1rem;border-radius:999px;vertical-align:middle;white-space:nowrap;border:2px solid transparent;transition:background .3s,border-color .3s}
 .conn-dot{width:.8rem;height:.8rem;border-radius:50%;display:inline-block;flex:none}
 .conn-badge.is-ok{background:rgba(34,197,94,.18);border-color:#22c55e;color:#bbf7d0}
@@ -505,9 +505,49 @@ nav.bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:1000;display:flex;
 // ═══════════════════════════════════════════════════════
 // 🔥 CONFIGURA AQUÍ LA URL DE TU APPS SCRIPT
 // ═══════════════════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbypmOW4YWTwAvHowD9e1pOWX4QVM-taPXCs3W98iGbjGz82ysxT3crMrrKex_TlX9Ju/exec';
+const SUPA_URL = 'https://uczlkdzvzbqgzzlhcmro.supabase.co';
+const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjemxrZHp2emJxZ3p6bGhjbXJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUxMzU2ODAsImV4cCI6MjExMDcxMTY4MH0.3xwFjVbL-Usa9hohxU0u__alXH8ZsdsJhH5CWllkH1M';
+/* Transporte Supabase (opción B): cada acción de la app llama a su
+   función cmn_* de Postgres, que valida la sesión por dentro.
+   Las tablas están cerradas: la clave pública sola no lee nada. */
+async function rpc(fn, args) {
+    const j = await fetchResiliente(SUPA_URL + '/rest/v1/rpc/' + fn, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: SUPA_ANON, Authorization: 'Bearer ' + SUPA_ANON },
+        body: JSON.stringify(args || {}),
+        redirect: 'follow'
+    });
+    if (j && !Array.isArray(j) && j.message && j.ok === undefined) {
+        return { ok: false, error: String(j.message) };
+    }
+    return j;
+}
+function rpcArgs(accion, body, tok) {
+    const d = (body && body.data) || {};
+    switch (accion) {
+        case 'login': return ['cmn_login', { p_usuario: body.usuario, p_password: body.password }];
+        case 'todo': return ['cmn_todo', { p_token: tok, p_negocio_id: body.negocioId }];
+        case 'negocios': return ['cmn_negocios_list', { p_token: tok }];
+        case 'usuarios': return ['cmn_usuarios_list', { p_token: tok }];
+        case 'verificarEdicion': return ['cmn_verificar_edicion', { p_token: tok, p_clave: body.clave }];
+        case 'crearProducto': return ['cmn_producto_crear', { p_token: tok, p_data: d }];
+        case 'editarProducto': return ['cmn_producto_editar', { p_token: tok, p_codigo_original: body.codigoOriginal, p_data: d }];
+        case 'eliminarProducto': return ['cmn_producto_eliminar', { p_token: tok, p_negocio_id: body.negocioId, p_codigo: body.codigo }];
+        case 'crearVenta': return ['cmn_venta_crear', { p_token: tok, p_data: d }];
+        case 'eliminarVenta': return ['cmn_venta_eliminar', { p_token: tok, p_id: Number(body.id) || 0 }];
+        case 'guardarSemana': return ['cmn_semana_guardar', { p_token: tok, p_data: d }];
+        case 'cerrarMes': return ['cmn_mes_cerrar', { p_token: tok, p_negocio_id: body.negocioId }];
+        case 'crearNegocio': return ['cmn_negocio_crear', { p_token: tok, p_data: d }];
+        case 'editarNegocio': return ['cmn_negocio_editar', { p_token: tok, p_negocio_id: body.negocioId, p_data: d }];
+        case 'eliminarNegocio': return ['cmn_negocio_eliminar', { p_token: tok, p_negocio_id: body.negocioId }];
+        case 'crearUsuario': return ['cmn_usuario_crear', { p_token: tok, p_data: d }];
+        case 'editarUsuario': return ['cmn_usuario_editar', { p_token: tok, p_usuario_original: body.usuarioOriginal, p_data: d }];
+        case 'eliminarUsuario': return ['cmn_usuario_eliminar', { p_token: tok, p_usuario: body.usuario }];
+        default: throw new Error('Acción desconocida: ' + accion);
+    }
+}
 
-/* Indicador de conexión con Google Sheets */
+/* Indicador de conexión con la base de datos (Supabase) */
 function setConn(ok){
     [['connDot','connText','connBadge'],['connDotLogin','connTextLogin','connBadgeLogin']].forEach(function(ids){
         const d=document.getElementById(ids[0]),t=document.getElementById(ids[1]),b=document.getElementById(ids[2]);
@@ -516,7 +556,7 @@ function setConn(ok){
         b.classList.remove('is-ok','is-fail');
         b.classList.add(ok?'is-ok':'is-fail');
         t.textContent=ok?'Conectado':'Sin conexión';
-        b.title=ok?'Conexión con Google Sheets establecida':'Sin conexión con Google Sheets';
+        b.title=ok?'Conexión con la base de datos establecida':'Sin conexión con la base de datos';
     });
 }
 
@@ -898,31 +938,26 @@ const App = {
 
     async apiGet(params) {
         const tok = sessionStorage.getItem('multi_token');
-        if (tok) params = Object.assign({}, params, { token: tok });
-        const url = API_URL + '?' + new URLSearchParams(params).toString();
-        try{
-            const j = await fetchResiliente(url, { method: 'GET', redirect: 'follow' });
+        try {
+            const par = rpcArgs(params.accion, params, tok);
+            const j = await rpc(par[0], par[1]);
             setConn(true);
             return j;
-        }catch(e){ setConn(false); throw e; }
+        } catch(e) { setConn(false); throw e; }
     },
     async apiPost(body) {
-        try{
+        try {
             const tok = sessionStorage.getItem('multi_token');
-            if (tok) body = Object.assign({}, body, { token: tok });
-            const j = await fetchResiliente(API_URL, {
-                method: 'POST',
-                body: JSON.stringify(body),
-                redirect: 'follow'
-            });
-            if (j && j.error && String(j.error).indexOf('Sesión inválida') === 0) {
+            const par = rpcArgs(body.accion, body, tok);
+            const j = await rpc(par[0], par[1]);
+            if (j && j.error && String(j.error).indexOf('Sesión inválida') === 0 && body.accion !== 'login') {
                 sessionStorage.removeItem('multi_user'); sessionStorage.removeItem('multi_token');
                 alert('Tu sesión venció. Entra de nuevo.');
                 location.reload();
             }
             setConn(true);
             return j;
-        }catch(e){ setConn(false); throw e; }
+        } catch(e) { setConn(false); throw e; }
     },
     mostrarLoading(v) { document.getElementById('loading-overlay').style.display = v ? 'flex' : 'none'; },
 
@@ -932,7 +967,7 @@ const App = {
         (async () => {
             for (let i = 0; i < 3; i++) {
                 try {
-                    await fetchResiliente(API_URL + '?accion=ping', {method:'GET', redirect:'follow'}, 1);
+                    await rpc('cmn_ping', {});
                     setConn(true); return;
                 } catch(e) { if (i < 2) await new Promise(r => setTimeout(r, 1500)); }
             }
